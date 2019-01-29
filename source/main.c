@@ -11,7 +11,23 @@ const int whiteStartBackRow = 7;
 const int whiteStartFrontRow = 6;
 const int blackStartBackRow = 0;
 const int blackStartFrontRow = 1;
-
+const int spaceAndPieceSize = 90;
+const int piecesTotal = 12;
+const char *filepaths[piecesTotal];
+filepaths[0] = "romfs:/image/whitepawn.png";
+filepaths[1] = "romfs:/image/whiteknight.png";
+filepaths[2] = "romfs:/image/whitebishop.png";
+filepaths[3] = "romfs:/image/whiterook.png";
+filepaths[4] = "romfs:/image/whitequeen.png";
+filepaths[5] = "romfs:/image/whiteking.png";
+filepaths[6] = "romfs:/image/blackpawn.png";
+filepaths[7] = "romfs:/image/blackknight.png";
+filepaths[8] = "romfs:/image/blackbishop.png";
+filepaths[9] = "romfs:/image/blackrook.png";
+filepaths[10] = "romfs:/image/blackqueen.png";
+filepaths[11] = "romfs:/image/blackking.png";
+const int blackPieceTextureOffset = 6;
+//I need this to skip over the white textures in the array of piece textures.
 
 int board[boardlw][boardlw] =  {{0,0,0,0,0,0,0,0},
 				   				{0,0,0,0,0,0,0,0},
@@ -91,9 +107,43 @@ struct playerCursor* createNewCursor(bool iswhite){
 	return cursor;
 }
 
+void drawPiece(SDL_Renderer *r, SDL_Texture *t, int x, int y){
+	SDL_Rect destRec;
+	destRec.x = x;
+	destRec.y = y;
+	destRec.w = spaceAndPieceSize;
+	destRec.h = spaceAndPieceSize;
+	SDL_RenderCopy(r,t,NULL,&destRec);
+}
+
 
 // Main program entrypoint
 int main(int argc, char* argv[]){
+
+	SDL_Init(SDL_INIT_EVERYTHING);
+	IMG_Init(IMG_INIT_PNG);
+	romfsInit();
+	//TTF_Init();
+
+	SDL_Window *window;
+	SDL_Renderer *renderer;
+	SDL_Surface *bgsurface;
+	SDL_Texture *bgtexture;
+	SDL_Texture *piecetextures[piecesTotal];
+	SDL_Surface *piecesurface;
+
+
+	SDL_CreateWindowAndRenderer(0,0,SDL_WINDOW_FULLSCREEN_DESKTOP, &window, &renderer);
+	bgsurface = IMG_Load("romfs:/image/chessboard-magick.png");
+	bgtexture = SDL_CreateTextureFromSurface(renderer,bgsurface);
+	SDL_FreeSurface(bgsurface);
+
+	//load all the block textures into an array for later use.
+	for(int i = 0; i<piecesTotal;i++){
+		piecesurface = IMG_Load(filepaths[i]);
+		piecetextures[i] = SDL_CreateTextureFromSurface(renderer,piecesurface);
+		SDL_FreeSurface(piecesurface);
+	}
 
 	struct *team whiteTeam = createTeam(true);
 	struct *team blackTeam = createTeam(false);
@@ -110,9 +160,30 @@ int main(int argc, char* argv[]){
         if (kDown & KEY_PLUS)
             break; // break in order to return to hbmenu
 
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
+		for(int i = 0;i<teamsize;i++){
+			if(whiteTeam->pieces[i] != NULL){
+				drawPiece(renderer,piecetextures[i],whiteTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
+			}
+			if(blackTeam->pieces[i] != NULL){
+				drawPiece(renderer,piecetextures[i+blackPieceTextureOffset],blackTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
+			}
+		}
+		SDL_RenderPresent(renderer);
 
     }
 
+	//TTF_Quit();
+	romfsExit();
+	IMG_Quit();
+	SDL_DestroyTexture(bgtexture);
+	for(int i =0; i<piecesTotal;i++){
+		SDL_DestroyTexture(piecetextures[i]);
+	}
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
 	free(whiteTeam);
 	free(blackTeam);
 	free(p1cursor);
