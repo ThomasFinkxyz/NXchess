@@ -13,23 +13,11 @@ const int blackStartBackRow = 0;
 const int blackStartFrontRow = 1;
 const int spaceAndPieceSize = 90;
 const int piecesTotal = 12;
-const char *filepaths[piecesTotal];
-filepaths[0] = "romfs:/image/whitepawn.png";
-filepaths[1] = "romfs:/image/whiteknight.png";
-filepaths[2] = "romfs:/image/whitebishop.png";
-filepaths[3] = "romfs:/image/whiterook.png";
-filepaths[4] = "romfs:/image/whitequeen.png";
-filepaths[5] = "romfs:/image/whiteking.png";
-filepaths[6] = "romfs:/image/blackpawn.png";
-filepaths[7] = "romfs:/image/blackknight.png";
-filepaths[8] = "romfs:/image/blackbishop.png";
-filepaths[9] = "romfs:/image/blackrook.png";
-filepaths[10] = "romfs:/image/blackqueen.png";
-filepaths[11] = "romfs:/image/blackking.png";
 const int blackPieceTextureOffset = 6;
 //I need this to skip over the white textures in the array of piece textures.
 
-int board[boardlw][boardlw] =  {{0,0,0,0,0,0,0,0},
+//cant use boardlw because C is dumb
+int board[8][8] =  {{0,0,0,0,0,0,0,0},
 				   				{0,0,0,0,0,0,0,0},
 				   				{0,0,0,0,0,0,0,0},
 				   				{0,0,0,0,0,0,0,0},
@@ -42,24 +30,43 @@ struct playerCursor{
 	int x;
 	int y;
 	bool isWhite;
-}
+};
 
 struct piece{
 	enum {pawn,knight,bishop,rook,queen,king}type;
 	bool isWhite;
 	int x;
 	int y;
-}
+	bool isAlive;
+};
 
 struct team{
 	bool isWhite;
-	struct piece pieces[teamsize];
+	struct piece pieces[16];
+//16 is the teamsize
+};
+
+struct piece* createPiece(int type, bool isWhite, int x, int y, bool isAlive){
+	struct piece* piecePointer = (struct piece*)malloc(sizeof(struct piece));
+	piecePointer->type = type;
+	piecePointer->isWhite = isWhite;
+	piecePointer->x = x;
+	piecePointer->y = y;
+	piecePointer->isAlive = isAlive;
+	return piecePointer;
 }
 
-struct *team createTeam(bool isWhite){
+struct team* createTeam(bool isWhite){
 	struct team* teamPointer = (struct team*)malloc(sizeof(struct team));
 	int backRowY;
 	int frontRowY;
+	int pawnNum = 0;   //this is spaghetti but it will probably work
+	int knightNum = 1;
+	int bishopNum = 2;
+	int rookNum = 3;
+	int queenNum = 4;
+	int kingNum = 5;
+
 	if(isWhite){
 		backRowY = whiteStartBackRow;
 		frontRowY = whiteStartFrontRow;
@@ -68,27 +75,27 @@ struct *team createTeam(bool isWhite){
 		frontRowY = blackStartFrontRow;
 	}
 	for(int i =0; i<boardlw;i++){
-		teamPointer->pieces[i] = piece{pawn,isWhite,i,frontRowY};
+		teamPointer->pieces[i] = (*createPiece(pawnNum,isWhite,i,frontRowY,true));
 	}
 	for(int i =0;i<boardlw;i++){
 		switch(i){
 			case 0:
 			case 7:
-				teamPointer->pieces[i+boardlw] = piece{rook,isWhite,i,backRowY};
+				teamPointer->pieces[i+boardlw] = (*createPiece(rookNum,isWhite,i,backRowY,true));
 				break;
 			case 1:
 			case 6:
-				teamPointer->pieces[i+boardlw] = piece{knight,isWhite,i,backRowY};
+				teamPointer->pieces[i+boardlw] = (*createPiece(knightNum,isWhite,i,backRowY,true));
 				break;
 			case 2:
 			case 5:
-				teamPointer->pieces[i+boardlw] = piece{bishop,isWhite,i,backRowY};
+				teamPointer->pieces[i+boardlw] = (*createPiece(bishopNum,isWhite,i,backRowY,true));
 				break;
 			case 4:
-				teamPointer->pieces[i+boardlw] = piece{king,isWhite,i,backRowY};
+				teamPointer->pieces[i+boardlw] = (*createPiece(kingNum,isWhite,i,backRowY,true));
 				break;
 			case 3:
-				teamPointer->pieces[i+boardlw] = piece{queen,isWhite,i,backRowY};
+				teamPointer->pieces[i+boardlw] = (*createPiece(queenNum,isWhite,i,backRowY,true));
 				break;
 		}
 	}
@@ -96,7 +103,7 @@ struct *team createTeam(bool isWhite){
 }
 
 struct playerCursor* createNewCursor(bool iswhite){
-	struct playerCursor* cursor = (struct playerCursor*)malloc(sizeof(struct PlayerCursor))
+	struct playerCursor* cursor = (struct playerCursor*)malloc(sizeof(struct playerCursor));
 	cursor->x = 0;
 	if(iswhite){
 		cursor->y = whiteStartFrontRow;
@@ -138,6 +145,8 @@ int main(int argc, char* argv[]){
 	bgtexture = SDL_CreateTextureFromSurface(renderer,bgsurface);
 	SDL_FreeSurface(bgsurface);
 
+	const char *filepaths[12] = {"romfs:/image/whitepawn.png", "romfs:/image/whiteknight.png", "romfs:/image/whitebishop.png", "romfs:/image/whiterook.png", "romfs:/image/whitequeen.png", "romfs:/image/whiteking.png", "romfs:/image/blackpawn.png", "romfs:/image/blackknight.png", "romfs:/image/blackbishop.png", "romfs:/image/blackrook.png", "romfs:/image/blackqueen.png", "romfs:/image/blackking.png"};
+
 	//load all the block textures into an array for later use.
 	for(int i = 0; i<piecesTotal;i++){
 		piecesurface = IMG_Load(filepaths[i]);
@@ -145,9 +154,9 @@ int main(int argc, char* argv[]){
 		SDL_FreeSurface(piecesurface);
 	}
 
-	struct *team whiteTeam = createTeam(true);
-	struct *team blackTeam = createTeam(false);
-	struct *playerCursor p1cursor = createNewCursor(true);
+	struct team* whiteTeam = createTeam(true);
+	struct team* blackTeam = createTeam(false);
+	struct playerCursor* p1cursor = createNewCursor(true);
 
     while (appletMainLoop()){
         // Scan all the inputs. This should be done once for each frame
@@ -163,10 +172,10 @@ int main(int argc, char* argv[]){
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
 		for(int i = 0;i<teamsize;i++){
-			if(whiteTeam->pieces[i] != NULL){
+			if(whiteTeam->pieces[i].isAlive){
 				drawPiece(renderer,piecetextures[i],whiteTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
 			}
-			if(blackTeam->pieces[i] != NULL){
+			if(blackTeam->pieces[i].isAlive){
 				drawPiece(renderer,piecetextures[i+blackPieceTextureOffset],blackTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
 			}
 		}
