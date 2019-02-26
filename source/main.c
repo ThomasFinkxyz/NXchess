@@ -42,7 +42,7 @@ struct piece{
 
 struct team{
 	bool isWhite;
-	struct piece pieces[16];
+	struct piece* pieces[16];
 //16 is the teamsize
 };
 
@@ -75,27 +75,27 @@ struct team* createTeam(bool isWhite){
 		frontRowY = blackStartFrontRow;
 	}
 	for(int i =0; i<boardlw;i++){
-		teamPointer->pieces[i] = (*createPiece(pawnNum,isWhite,i,frontRowY,true));
+		teamPointer->pieces[i] = createPiece(pawnNum,isWhite,i,frontRowY,true);
 	}
 	for(int i =0;i<boardlw;i++){
 		switch(i){
 			case 0:
 			case 7:
-				teamPointer->pieces[i+boardlw] = (*createPiece(rookNum,isWhite,i,backRowY,true));
+				teamPointer->pieces[i+boardlw] = createPiece(rookNum,isWhite,i,backRowY,true);
 				break;
 			case 1:
 			case 6:
-				teamPointer->pieces[i+boardlw] = (*createPiece(knightNum,isWhite,i,backRowY,true));
+				teamPointer->pieces[i+boardlw] = createPiece(knightNum,isWhite,i,backRowY,true);
 				break;
 			case 2:
 			case 5:
-				teamPointer->pieces[i+boardlw] = (*createPiece(bishopNum,isWhite,i,backRowY,true));
+				teamPointer->pieces[i+boardlw] = createPiece(bishopNum,isWhite,i,backRowY,true);
 				break;
 			case 4:
-				teamPointer->pieces[i+boardlw] = (*createPiece(kingNum,isWhite,i,backRowY,true));
+				teamPointer->pieces[i+boardlw] = createPiece(kingNum,isWhite,i,backRowY,true);
 				break;
 			case 3:
-				teamPointer->pieces[i+boardlw] = (*createPiece(queenNum,isWhite,i,backRowY,true));
+				teamPointer->pieces[i+boardlw] = createPiece(queenNum,isWhite,i,backRowY,true);
 				break;
 		}
 	}
@@ -172,11 +172,11 @@ int main(int argc, char* argv[]){
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
 		for(int i = 0;i<teamsize;i++){
-			if(whiteTeam->pieces[i].isAlive){
-				drawPiece(renderer,piecetextures[i],whiteTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
+			if((*whiteTeam->pieces)[i].isAlive){
+				drawPiece(renderer,piecetextures[i],(*whiteTeam->pieces)[i].x*spaceAndPieceSize,(*whiteTeam->pieces)[i].y*spaceAndPieceSize);
 			}
-			if(blackTeam->pieces[i].isAlive){
-				drawPiece(renderer,piecetextures[i+blackPieceTextureOffset],blackTeam->pieces[i].x*spaceAndPieceSize,whiteTeam->pieces[i].y*spaceAndPieceSize);
+			if((*blackTeam->pieces)[i].isAlive){
+				drawPiece(renderer,piecetextures[i+blackPieceTextureOffset],(*blackTeam->pieces)[i].x*spaceAndPieceSize,(*whiteTeam->pieces)[i].y*spaceAndPieceSize);
 			}
 		}
 		SDL_RenderPresent(renderer);
@@ -193,6 +193,10 @@ int main(int argc, char* argv[]){
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+	for(int i =0; i<16;i++){
+		free(whiteTeam->pieces[i]);
+		free(blackTeam->pieces[i]);
+	}
 	free(whiteTeam);
 	free(blackTeam);
 	free(p1cursor);
