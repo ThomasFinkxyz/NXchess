@@ -4,6 +4,7 @@
 #include <SDL2/SDL_image.h>
 
 const int boardlw = 8;
+const int pixelsToBoard = 432;  //1920/1280 = 1.5  1.5*288(pixels to board in the background.png) = 432
 const int teamsize = 16;
 const int kingStartX = 4;
 const int queenStartX = 3;
@@ -11,7 +12,7 @@ const int whiteStartBackRow = 7;
 const int whiteStartFrontRow = 6;
 const int blackStartBackRow = 0;
 const int blackStartFrontRow = 1;
-const int spaceAndPieceSize = 90;
+const int spaceAndPieceSize = 135; //originally 90 but it seems I have to multiple everything by 1.5 and design my game for 1080p for some reason. I think the libraries expect you to target 1080p and then makes 720p adjustements for you? Really weird.
 const int piecesTotal = 12;
 const int blackPieceTextureOffset = 6;
 //I need this to skip over the white textures in the array of piece textures.
@@ -141,7 +142,7 @@ int main(int argc, char* argv[]){
 
 
 	SDL_CreateWindowAndRenderer(0,0,SDL_WINDOW_FULLSCREEN_DESKTOP, &window, &renderer);
-	bgsurface = IMG_Load("romfs:/image/chessboard-magick.png");
+	bgsurface = IMG_Load("romfs:/image/background.png");
 	bgtexture = SDL_CreateTextureFromSurface(renderer,bgsurface);
 	SDL_FreeSurface(bgsurface);
 
@@ -156,9 +157,9 @@ int main(int argc, char* argv[]){
 
 	struct team* whiteTeam = createTeam(true);
 	struct team* blackTeam = createTeam(false);
-	struct playerCursor* p1cursor = createNewCursor(true);
+//	struct playerCursor* p1cursor = createNewCursor(true);
 
-    while (appletMainLoop()){
+    while (true){
         // Scan all the inputs. This should be done once for each frame
         hidScanInput();
 
@@ -172,13 +173,14 @@ int main(int argc, char* argv[]){
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
 		for(int i = 0;i<teamsize;i++){
-			if((*whiteTeam->pieces)[i].isAlive){
-				drawPiece(renderer,piecetextures[i],(*whiteTeam->pieces)[i].x*spaceAndPieceSize,(*whiteTeam->pieces)[i].y*spaceAndPieceSize);
+			if((whiteTeam->pieces)[i]->isAlive){
+				drawPiece(renderer,piecetextures[(whiteTeam->pieces)[i]->type],(whiteTeam->pieces)[i]->x*spaceAndPieceSize+pixelsToBoard,(whiteTeam->pieces)[i]->y*spaceAndPieceSize);
 			}
-			if((*blackTeam->pieces)[i].isAlive){
-				drawPiece(renderer,piecetextures[i+blackPieceTextureOffset],(*blackTeam->pieces)[i].x*spaceAndPieceSize,(*whiteTeam->pieces)[i].y*spaceAndPieceSize);
+			if((blackTeam->pieces)[i]->isAlive){
+				drawPiece(renderer,piecetextures[(whiteTeam->pieces)[i]->type+blackPieceTextureOffset],(blackTeam->pieces)[i]->x*spaceAndPieceSize+pixelsToBoard,(blackTeam->pieces)[i]->y*spaceAndPieceSize);
 			}
 		}
+		//drawPiece(renderer,piecetextures[0],288,1000);
 		SDL_RenderPresent(renderer);
 
     }
@@ -199,6 +201,6 @@ int main(int argc, char* argv[]){
 	}
 	free(whiteTeam);
 	free(blackTeam);
-	free(p1cursor);
+//	free(p1cursor);
     return 0;
 }
