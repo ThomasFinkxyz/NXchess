@@ -19,13 +19,13 @@ const int blackPieceTextureOffset = 6;
 
 //cant use boardlw because C is dumb
 int board[8][8] =  {{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0},
-				   				{0,0,0,0,0,0,0,0}};
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0},
+				   	{0,0,0,0,0,0,0,0}};
 
 struct playerCursor{
 	int x;
@@ -39,6 +39,13 @@ struct piece{
 	int x;
 	int y;
 	bool isAlive;
+	struct potentialPosition* potentialPos;
+};
+
+struct potentialPosition{
+	int x;
+	int y;
+	struct potentialPosition* next;
 };
 
 struct team{
@@ -54,6 +61,7 @@ struct piece* createPiece(int type, bool isWhite, int x, int y, bool isAlive){
 	piecePointer->x = x;
 	piecePointer->y = y;
 	piecePointer->isAlive = isAlive;
+	piecePointer->potentialPos = NULL;
 	return piecePointer;
 }
 
@@ -124,6 +132,124 @@ void drawPiece(SDL_Renderer *r, SDL_Texture *t, int x, int y){
 	SDL_RenderCopy(r,t,NULL,&destRec);
 }
 
+void addToPotentialMoves(struct potentialPosition* potPos, int potX, int potY){
+	if(potPos->next == NULL){
+		potPos->next  = (struct potentialPosition*)malloc(sizeof(struct potentialPosition));
+		potPos->next->x = potX;
+		potPos->next->y = potY;
+	} else{
+		addToPotentialMoves(potPos->next,potX,potY);
+	}
+}
+
+void clearPotentialMoves(struct potentialPosition* potPos){
+	struct potentialPosition* tmp;
+	if(potPos != NULL){
+		tmp = potPos->next;
+		free(potPos);
+		clearPotentialMoves(tmp);
+	}
+}
+
+
+void validateMove(struct piece* movingPiece, int potX, int potY){
+	if(potX >= 0 && potX < 8 && potY >= 0 && potY < 8){
+		if(movingPiece->isWhite){
+			if(board[potX][potY] > blackPieceTextureOffset || board[potX][potY] == 0){
+				addToPotentialMoves(movingPiece->potentialPos,potX,potY);
+			}
+		} else{
+			if(board[potX][potY] <= blackPieceTextureOffset || board[potX][potY] == 0){
+				addToPotentialMoves(movingPiece->potentialPos,potX,potY);
+			}
+		}
+
+	}
+}
+
+void moveFinderHelper(struct piece* movingPiece, int potX, int potY, int xIncrement, int yIncrement){
+	for(;;){
+		potX += xIncrement;
+		potY += yIncrement;
+		validateMove(movingPiece,potX,potY);
+		if(potX < 8 && potX >= 0 && potY < 8 && potY >= 0 ){
+			if(board[potX][potY] != 0){
+				break;
+			}
+		} else{
+			break;
+		}
+	}
+}
+
+void findMoves(struct piece* movingPiece){
+	int pawnPotY;
+	clearPotentialMoves(movingPiece->potentialPos);
+	switch(movingPiece->type){
+		case pawn:
+			if(movingPiece->isWhite){
+				pawnPotY = movingPiece->y-1;
+			} else {
+				pawnPotY = movingPiece->y+1;
+			}
+			if(movingPiece->x >= 0 && movingPiece->x < 8 && pawnPotY >= 0 && pawnPotY < 8){
+				if(board[movingPiece->x][pawnPotY] == 0){
+					validateMove(movingPiece,movingPiece->x,pawnPotY);
+				}
+			}
+			validateMove(movingPiece,movingPiece->x + 1,pawnPotY);
+			validateMove(movingPiece,movingPiece->x - 1,pawnPotY);
+			break;
+		case knight:
+			validateMove(movingPiece,movingPiece->x+2,movingPiece->y+1);
+			validateMove(movingPiece,movingPiece->x+2,movingPiece->y-1);
+
+			validateMove(movingPiece,movingPiece->x-2,movingPiece->y+1);
+			validateMove(movingPiece,movingPiece->x-2,movingPiece->y-1);
+
+			validateMove(movingPiece,movingPiece->x+1,movingPiece->y-2);
+			validateMove(movingPiece,movingPiece->x-1,movingPiece->y-2);
+
+			validateMove(movingPiece,movingPiece->x+1,movingPiece->y+2);
+			validateMove(movingPiece,movingPiece->x-1,movingPiece->y+2);
+		case bishop:
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,-1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,-1);
+		case rook:
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,0,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,0,-1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,0);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,0);
+		case queen:
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,-1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,-1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,0,1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,0,-1);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,-1,0);
+			moveFinderHelper(movingPiece,movingPiece->x,movingPiece->y,1,0);
+		case king:
+			validateMove(movingPiece,movingPiece->x+1,movingPiece->y);
+			validateMove(movingPiece,movingPiece->x-1,movingPiece->y);
+			validateMove(movingPiece,movingPiece->x,movingPiece->y-1);
+			validateMove(movingPiece,movingPiece->x,movingPiece->y+1);
+			validateMove(movingPiece,movingPiece->x+1,movingPiece->y-1);
+			validateMove(movingPiece,movingPiece->x+1,movingPiece->y+1);
+			validateMove(movingPiece,movingPiece->x-1,movingPiece->y-1);
+			validateMove(movingPiece,movingPiece->x-1,movingPiece->y+1);
+		default:
+			break;
+
+
+	}
+
+}
+
+
+
 
 // Main program entrypoint
 int main(int argc, char* argv[]){
@@ -159,6 +285,14 @@ int main(int argc, char* argv[]){
 	struct team* blackTeam = createTeam(false);
 //	struct playerCursor* p1cursor = createNewCursor(true);
 
+	enum {p1pieceSelect,p1moveSelect,p1inCheck,p2pieceSelect,p2moveSelect,p2inCheck}currentState;
+	currentState = p1pieceSelect;
+
+	for(int i = 0; i<teamsize; i++){
+		board[(whiteTeam->pieces)[i]->x][(whiteTeam->pieces)[i]->y] = (whiteTeam->pieces)[i]->type + 1;    //Need to add 1 so white pawns aren't 0s in the array.
+		board[(blackTeam->pieces)[i]->x][(blackTeam->pieces)[i]->y] = (blackTeam->pieces)[i]->type + blackPieceTextureOffset + 1; //blackPieceTextureOffset should probably be renamed but it just makes so the program can figure out if the number in the array represents a black piece.
+	};
+
     while (true){
         // Scan all the inputs. This should be done once for each frame
         hidScanInput();
@@ -169,6 +303,10 @@ int main(int argc, char* argv[]){
 
         if (kDown & KEY_PLUS)
             break; // break in order to return to hbmenu
+
+		//switch(currentState){
+		//	case p1
+		//}
 
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
