@@ -16,6 +16,7 @@ const int spaceAndPieceSize = 135; //originally 90 but it seems I have to multip
 const int piecesTotal = 12;
 const int blackPieceTextureOffset = 6;
 //I need this to skip over the white textures in the array of piece textures.
+const int cursorStartX = 3;
 
 //cant use boardlw because C is dumb
 int board[8][8] =  {{0,0,0,0,0,0,0,0},
@@ -113,7 +114,7 @@ struct team* createTeam(bool isWhite){
 
 struct playerCursor* createNewCursor(bool iswhite){
 	struct playerCursor* cursor = (struct playerCursor*)malloc(sizeof(struct playerCursor));
-	cursor->x = 0;
+	cursor->x = cursorStartX;
 	if(iswhite){
 		cursor->y = whiteStartFrontRow;
 	} else{
@@ -155,11 +156,11 @@ void clearPotentialMoves(struct potentialPosition* potPos){
 void validateMove(struct piece* movingPiece, int potX, int potY){
 	if(potX >= 0 && potX < 8 && potY >= 0 && potY < 8){
 		if(movingPiece->isWhite){
-			if(board[potX][potY] > blackPieceTextureOffset || board[potX][potY] == 0){
+			if(board[potY][potX] > blackPieceTextureOffset || board[potY][potX] == 0){
 				addToPotentialMoves(movingPiece->potentialPos,potX,potY);
 			}
 		} else{
-			if(board[potX][potY] <= blackPieceTextureOffset || board[potX][potY] == 0){
+			if(board[potY][potX] <= blackPieceTextureOffset || board[potY][potX] == 0){
 				addToPotentialMoves(movingPiece->potentialPos,potX,potY);
 			}
 		}
@@ -173,7 +174,7 @@ void moveFinderHelper(struct piece* movingPiece, int potX, int potY, int xIncrem
 		potY += yIncrement;
 		validateMove(movingPiece,potX,potY);
 		if(potX < 8 && potX >= 0 && potY < 8 && potY >= 0 ){
-			if(board[potX][potY] != 0){
+			if(board[potY][potX] != 0){
 				break;
 			}
 		} else{
@@ -193,7 +194,7 @@ void findMoves(struct piece* movingPiece){
 				pawnPotY = movingPiece->y+1;
 			}
 			if(movingPiece->x >= 0 && movingPiece->x < 8 && pawnPotY >= 0 && pawnPotY < 8){
-				if(board[movingPiece->x][pawnPotY] == 0){
+				if(board[pawnPotY][movingPiece->x] == 0){
 					validateMove(movingPiece,movingPiece->x,pawnPotY);
 				}
 			}
@@ -248,7 +249,22 @@ void findMoves(struct piece* movingPiece){
 
 }
 
-
+void movePiece(struct piece* movingPiece, struct potentialPosition* destination, struct team* otherTeam){
+	board[movingPiece->y][movingPiece->x] = 0;
+	movingPiece->x = destination->x;
+	movingPiece->y = destination->y;
+	for(int i = 0; i<teamsize; i++){
+		if((otherTeam->pieces)[i]->x == movingPiece->x && (otherTeam->pieces)[i]->y == movingPiece->y){
+			(otherTeam->pieces)[i]->isAlive = false;
+		}
+	}
+	if(movingPiece->isWhite){
+		board[movingPiece->y][movingPiece->x] = movingPiece->type +1;
+	} else{
+		board[movingPiece->y][movingPiece->x] = movingPiece->type + blackPieceTextureOffset + 1;
+	}
+	clearPotentialMoves(movingPiece->potentialPos);
+}
 
 
 // Main program entrypoint
@@ -264,13 +280,31 @@ int main(int argc, char* argv[]){
 	SDL_Surface *bgsurface;
 	SDL_Texture *bgtexture;
 	SDL_Texture *piecetextures[piecesTotal];
+	SDL_Texture *redSpaceTexture;
+	SDL_Texture *p1cursorTexture;
+	SDL_Texture *p2cursorTexture;
 	SDL_Surface *piecesurface;
+	SDL_Surface *redSpaceSurface;
+	SDL_Surface *p1cursorSurface;
+	SDL_Surface *p2cursorSurface;
 
 
 	SDL_CreateWindowAndRenderer(0,0,SDL_WINDOW_FULLSCREEN_DESKTOP, &window, &renderer);
 	bgsurface = IMG_Load("romfs:/image/background.png");
 	bgtexture = SDL_CreateTextureFromSurface(renderer,bgsurface);
 	SDL_FreeSurface(bgsurface);
+
+	redSpaceSurface = IMG_Load("romfs:/image/redspace.png");
+	redSpaceTexture = SDL_CreateTextureFromSurface(renderer,redSpaceSurface);
+	SDL_FreeSurface(redSpaceSurface);
+
+	p1cursorSurface = IMG_Load("romfs:/image/p1cursor.png");
+	p1cursorTexture = SDL_CreateTextureFromSurface(renderer,p1cursorSurface);
+	SDL_FreeSurface(p1cursorSurface);
+
+	p2cursorSurface = IMG_Load("romfs:/image/p2cursor.png");
+	p2cursorTexture = SDL_CreateTextureFromSurface(renderer,p2cursorSurface);
+	SDL_FreeSurface(p2cursorSurface);
 
 	const char *filepaths[12] = {"romfs:/image/whitepawn.png", "romfs:/image/whiteknight.png", "romfs:/image/whitebishop.png", "romfs:/image/whiterook.png", "romfs:/image/whitequeen.png", "romfs:/image/whiteking.png", "romfs:/image/blackpawn.png", "romfs:/image/blackknight.png", "romfs:/image/blackbishop.png", "romfs:/image/blackrook.png", "romfs:/image/blackqueen.png", "romfs:/image/blackking.png"};
 
@@ -283,14 +317,17 @@ int main(int argc, char* argv[]){
 
 	struct team* whiteTeam = createTeam(true);
 	struct team* blackTeam = createTeam(false);
-//	struct playerCursor* p1cursor = createNewCursor(true);
+	struct playerCursor* p1cursor = createNewCursor(true);
+	struct playerCursor* p2cursor = createNewCursor(false);
 
 	enum {p1pieceSelect,p1moveSelect,p1inCheck,p2pieceSelect,p2moveSelect,p2inCheck}currentState;
 	currentState = p1pieceSelect;
 
+	struct piece* selectedPiece;
+
 	for(int i = 0; i<teamsize; i++){
-		board[(whiteTeam->pieces)[i]->x][(whiteTeam->pieces)[i]->y] = (whiteTeam->pieces)[i]->type + 1;    //Need to add 1 so white pawns aren't 0s in the array.
-		board[(blackTeam->pieces)[i]->x][(blackTeam->pieces)[i]->y] = (blackTeam->pieces)[i]->type + blackPieceTextureOffset + 1; //blackPieceTextureOffset should probably be renamed but it just makes so the program can figure out if the number in the array represents a black piece.
+		board[(whiteTeam->pieces)[i]->y][(whiteTeam->pieces)[i]->x] = (whiteTeam->pieces)[i]->type + 1;    //Need to add 1 so white pawns aren't 0s in the array.
+		board[(blackTeam->pieces)[i]->y][(blackTeam->pieces)[i]->x] = (blackTeam->pieces)[i]->type + blackPieceTextureOffset + 1; //blackPieceTextureOffset should probably be renamed but it just makes so the program can figure out if the number in the array represents a black piece.
 	};
 
     while (true){
@@ -299,14 +336,98 @@ int main(int argc, char* argv[]){
 
         // hidKeysDown returns information about which buttons have been
         // just pressed in this frame compared to the previous one
-        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO); //Idk how to do 2 player controls right so I'm doing a hacky solution that only works with joycons.
 
         if (kDown & KEY_PLUS)
             break; // break in order to return to hbmenu
 
-		//switch(currentState){
-		//	case p1
-		//}
+		switch(currentState){
+
+			case p1pieceSelect:
+				switch(kDown){
+					case KEY_RSTICK_UP:  //Right
+						p1cursor->x += 1;
+						break;
+					case KEY_RSTICK_DOWN: //Left
+						p1cursor->x -= 1;
+						break;
+					case KEY_RSTICK_LEFT:   //Up
+						p1cursor->y -= 1;
+						break;
+					case KEY_RSTICK_RIGHT: //Down
+						p1cursor->y += 1;
+						break;
+					case KEY_X:
+						currentState = p2pieceSelect;
+						break;
+					default:
+						break;
+
+				}
+				if(p1cursor->x > 7){
+					p1cursor->x = 7;
+				}
+
+				if(p1cursor->x < 0){
+					p1cursor->x = 0;
+				}
+
+				if(p1cursor->y > 7){
+					p1cursor->y = 7;
+				}
+
+				if(p1cursor->y < 0){
+					p1cursor->y = 0;
+				}
+				break;
+
+			case p2pieceSelect:
+				switch(kDown){
+					case KEY_LSTICK_DOWN: //Right
+						p2cursor->x += 1;
+						break;
+					case KEY_LSTICK_UP:  //Left
+						p2cursor->x -= 1;
+						break;
+					case KEY_LSTICK_RIGHT:    //Up
+						p2cursor->y -= 1;
+						break;
+					case KEY_LSTICK_LEFT:  //Down
+						p2cursor->y += 1;
+						break;
+					case KEY_DDOWN:
+						currentState = p1pieceSelect;
+						break;
+					default:
+						break;
+
+				}
+				if(p2cursor->x > 7){
+					p2cursor->x = 7;
+				}
+
+				if(p2cursor->x < 0){
+					p2cursor->x = 0;
+				}
+
+				if(p2cursor->y > 7){
+					p2cursor->y = 7;
+				}
+
+				if(p2cursor->y < 0){
+					p2cursor->y = 0;
+				}
+				break;
+			case p1moveSelect:
+				break;
+			case p1inCheck:
+				break;
+			case p2moveSelect:
+				break;
+			case p2inCheck:
+				break;
+
+		}
 
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer,bgtexture,NULL,NULL);
@@ -318,6 +439,9 @@ int main(int argc, char* argv[]){
 				drawPiece(renderer,piecetextures[(whiteTeam->pieces)[i]->type+blackPieceTextureOffset],(blackTeam->pieces)[i]->x*spaceAndPieceSize+pixelsToBoard,(blackTeam->pieces)[i]->y*spaceAndPieceSize);
 			}
 		}
+
+		drawPiece(renderer,p1cursorTexture,p1cursor->x*spaceAndPieceSize+pixelsToBoard,p1cursor->y*spaceAndPieceSize);
+		drawPiece(renderer,p2cursorTexture,p2cursor->x*spaceAndPieceSize+pixelsToBoard,p2cursor->y*spaceAndPieceSize);
 		//drawPiece(renderer,piecetextures[0],288,1000);
 		SDL_RenderPresent(renderer);
 
@@ -327,6 +451,9 @@ int main(int argc, char* argv[]){
 	romfsExit();
 	IMG_Quit();
 	SDL_DestroyTexture(bgtexture);
+	SDL_DestroyTexture(redSpaceTexture);
+	SDL_DestroyTexture(p1cursorTexture);
+	SDL_DestroyTexture(p2cursorTexture);
 	for(int i =0; i<piecesTotal;i++){
 		SDL_DestroyTexture(piecetextures[i]);
 	}
@@ -339,6 +466,7 @@ int main(int argc, char* argv[]){
 	}
 	free(whiteTeam);
 	free(blackTeam);
-//	free(p1cursor);
+	free(p1cursor);
+	free(p2cursor);
     return 0;
 }
