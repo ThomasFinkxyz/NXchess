@@ -145,19 +145,22 @@ void addToPotentialMoves(struct piece* movingPiece, int potX, int potY){
 			tmp = tmp->next;
 		}
 		tmp->next = (struct potentialPosition*)malloc(sizeof(struct potentialPosition));
-		tmp->x = potX;
-		tmp->y = potY;
+		tmp->next->x = potX;
+		tmp->next->y = potY;
 		tmp->next->next = NULL;
 	}
 }
 
-void clearPotentialMoves(struct potentialPosition* potPos){
-	struct potentialPosition* tmp = potPos;
-	if(tmp != NULL){
-		tmp = potPos->next;
-		free(potPos);
-		clearPotentialMoves(tmp);
+void clearPotentialMoves(struct piece* targetPiece){
+	struct potentialPosition* tmp = targetPiece->potentialPos;
+	struct potentialPosition* tmp2;
+	while(tmp != NULL){
+		tmp2 = tmp->next;
+		free(tmp);
+		tmp = NULL;
+		tmp = tmp2;
 	}
+	targetPiece->potentialPos = NULL;
 }
 
 
@@ -193,7 +196,7 @@ void moveFinderHelper(struct piece* movingPiece, int potX, int potY, int xIncrem
 
 void findMoves(struct piece* movingPiece){
 	int pawnPotY;
-	clearPotentialMoves(movingPiece->potentialPos);
+	//clearPotentialMoves(movingPiece);
 	switch(movingPiece->type){
 		case pawn:
 			if(movingPiece->isWhite){
@@ -208,6 +211,12 @@ void findMoves(struct piece* movingPiece){
 			}
 			validateMove(movingPiece,movingPiece->x + 1,pawnPotY);
 			validateMove(movingPiece,movingPiece->x - 1,pawnPotY);
+			//if(movingPiece->x >= 0 && movingPiece->x < 8 && pawnPotY >= 0 && pawnPotY < 8){
+			//	if(board[pawnPotY][movingPiece->x] == 0){
+			//		validateMove(movingPiece,movingPiece->x,pawnPotY);
+			//	}
+			//}
+
 			break;
 		case knight:
 			validateMove(movingPiece,movingPiece->x+2,movingPiece->y+1);
@@ -276,7 +285,7 @@ void movePiece(struct piece* movingPiece, struct potentialPosition* destination,
 	} else{
 		board[movingPiece->y][movingPiece->x] = movingPiece->type + blackPieceTextureOffset + 1;
 	}
-	clearPotentialMoves(movingPiece->potentialPos);
+	clearPotentialMoves(movingPiece);
 }
 
 
@@ -383,7 +392,7 @@ int main(int argc, char* argv[]){
 									currentState = p1moveSelect;
 								}else{
 									selectedPiece = NULL;
-									currentState = p2pieceSelect;
+									//currentState = p2pieceSelect;
 									//addToPotentialMoves(selectedPiece->potentialPos,3,5);
 									//currentState = p1moveSelect;
 								}
@@ -463,7 +472,9 @@ int main(int argc, char* argv[]){
 				break;
 
 			case p1moveSelect:
-
+				if(currentSpaceSelection == NULL){
+					currentSpaceSelection = selectedPiece->potentialPos;
+				}
 				p1cursor->x = currentSpaceSelection->x;
 				p1cursor->y = currentSpaceSelection->y;
 
@@ -474,7 +485,9 @@ int main(int argc, char* argv[]){
 						currentSpaceSelection = currentSpaceSelection->next;
 						break;
 					case KEY_RSTICK_DOWN: //left
-						currentSpaceSelection = lastSpaceSelection;
+						if(lastSpaceSelection != NULL){
+							currentSpaceSelection = lastSpaceSelection;
+						}
 						break;
 					case KEY_X:
 						movePiece(selectedPiece,currentSpaceSelection,blackTeam);
@@ -486,7 +499,7 @@ int main(int argc, char* argv[]){
 					case KEY_A:
 						currentSpaceSelection = NULL;
 						lastSpaceSelection = NULL;
-						clearPotentialMoves(selectedPiece->potentialPos);
+						clearPotentialMoves(selectedPiece);
 						selectedPiece = NULL;
 						currentState = p1pieceSelect;
 						break;
@@ -505,7 +518,9 @@ int main(int argc, char* argv[]){
 
 
 			case p2moveSelect:
-
+				if(currentSpaceSelection == NULL){
+					currentSpaceSelection = selectedPiece->potentialPos;
+				}
 				p2cursor->x = currentSpaceSelection->x;
 				p2cursor->y = currentSpaceSelection->y;
 
@@ -516,7 +531,9 @@ int main(int argc, char* argv[]){
 						currentSpaceSelection = currentSpaceSelection->next;
 						break;
 					case KEY_LSTICK_UP: //left
-						currentSpaceSelection = lastSpaceSelection;
+						if(lastSpaceSelection != NULL){
+							currentSpaceSelection = lastSpaceSelection;
+						}
 						break;
 					case KEY_DDOWN:
 						movePiece(selectedPiece,currentSpaceSelection,whiteTeam);
@@ -528,7 +545,7 @@ int main(int argc, char* argv[]){
 					case KEY_DLEFT:
 						currentSpaceSelection = NULL;
 						lastSpaceSelection = NULL;
-						clearPotentialMoves(selectedPiece->potentialPos);
+						clearPotentialMoves(selectedPiece);
 						selectedPiece = NULL;
 						currentState = p2pieceSelect;
 						break;
@@ -594,8 +611,8 @@ int main(int argc, char* argv[]){
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	for(int i =0; i<16;i++){
-		clearPotentialMoves((whiteTeam->pieces[i])->potentialPos);
-		clearPotentialMoves((blackTeam->pieces[i])->potentialPos);
+		//clearPotentialMoves((whiteTeam->pieces[i]));
+		//clearPotentialMoves((blackTeam->pieces[i]));
 		free(whiteTeam->pieces[i]);
 		free(blackTeam->pieces[i]);
 	}
