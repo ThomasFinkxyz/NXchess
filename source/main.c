@@ -271,10 +271,10 @@ void findMoves(struct piece* movingPiece){
 
 }
 
-void movePiece(struct piece* movingPiece, struct potentialPosition* destination, struct team* otherTeam){
+void movePiece(struct piece* movingPiece, struct playerCursor* cursor, struct team* otherTeam){
 	board[movingPiece->y][movingPiece->x] = 0;
-	movingPiece->x = destination->x;
-	movingPiece->y = destination->y;
+	movingPiece->x = cursor->x;
+	movingPiece->y = cursor->y;
 	for(int i = 0; i<teamsize; i++){
 		if((otherTeam->pieces)[i]->x == movingPiece->x && (otherTeam->pieces)[i]->y == movingPiece->y){
 			(otherTeam->pieces)[i]->isAlive = false;
@@ -286,6 +286,17 @@ void movePiece(struct piece* movingPiece, struct potentialPosition* destination,
 		board[movingPiece->y][movingPiece->x] = movingPiece->type + blackPieceTextureOffset + 1;
 	}
 	clearPotentialMoves(movingPiece);
+}
+
+bool playerOnValidSpace(struct potentialPosition* targetPos, struct playerCursor* cursor){
+	if(targetPos == NULL){
+		return false;
+	}
+	if(targetPos->x == cursor->x && targetPos->y == cursor->y){
+		return true;
+	} else {
+		return playerOnValidSpace(targetPos->next,cursor);
+	}
 }
 
 
@@ -347,8 +358,8 @@ int main(int argc, char* argv[]){
 
 	struct piece* selectedPiece = NULL;
 	struct potentialPosition* tmpPotPos = NULL;
-	struct potentialPosition* currentSpaceSelection = NULL;
-	struct potentialPosition* lastSpaceSelection = NULL;
+	//struct potentialPosition* currentSpaceSelection = NULL;
+//	struct potentialPosition* lastSpaceSelection = NULL;
 
 	for(int i = 0; i<teamsize; i++){
 		board[(whiteTeam->pieces)[i]->y][(whiteTeam->pieces)[i]->x] = (whiteTeam->pieces)[i]->type + 1;    //Need to add 1 so white pawns aren't 0s in the array.
@@ -388,7 +399,7 @@ int main(int argc, char* argv[]){
 								selectedPiece = (whiteTeam->pieces)[i];
 								findMoves(selectedPiece);
 								if(selectedPiece->potentialPos != NULL){
-									currentSpaceSelection = selectedPiece->potentialPos;
+									//currentSpaceSelection = selectedPiece->potentialPos;
 									currentState = p1moveSelect;
 								}else{
 									selectedPiece = NULL;
@@ -441,7 +452,7 @@ int main(int argc, char* argv[]){
 								selectedPiece = (blackTeam->pieces)[i];
 								findMoves(selectedPiece);
 								if(selectedPiece->potentialPos != NULL){
-									currentSpaceSelection = selectedPiece->potentialPos;
+									//currentSpaceSelection = selectedPiece->potentialPos;
 									currentState = p2moveSelect;
 								}else{
 									selectedPiece = NULL;
@@ -472,93 +483,112 @@ int main(int argc, char* argv[]){
 				break;
 
 			case p1moveSelect:
-				if(currentSpaceSelection == NULL){
-					currentSpaceSelection = selectedPiece->potentialPos;
-				}
-				p1cursor->x = currentSpaceSelection->x;
-				p1cursor->y = currentSpaceSelection->y;
+				//if(currentSpaceSelection == NULL){
+				//	currentSpaceSelection = selectedPiece->potentialPos;
+				//}
+				//p1cursor->x = currentSpaceSelection->x;
+				//p1cursor->y = currentSpaceSelection->y;
 
 				switch(kDown){
 
-					case KEY_RSTICK_UP:   //right
-						lastSpaceSelection = currentSpaceSelection;
-						currentSpaceSelection = currentSpaceSelection->next;
+					case KEY_RSTICK_UP:  //Right
+						p1cursor->x += 1;
 						break;
-					case KEY_RSTICK_DOWN: //left
-						if(lastSpaceSelection != NULL){
-							currentSpaceSelection = lastSpaceSelection;
-						}
+					case KEY_RSTICK_DOWN: //Left
+						p1cursor->x -= 1;
+						break;
+					case KEY_RSTICK_LEFT:   //Up
+						p1cursor->y -= 1;
+						break;
+					case KEY_RSTICK_RIGHT: //Down
+						p1cursor->y += 1;
 						break;
 					case KEY_X:
-						movePiece(selectedPiece,currentSpaceSelection,blackTeam);
-						currentSpaceSelection = NULL;
-						lastSpaceSelection = NULL;
+						if(playerOnValidSpace(selectedPiece->potentialPos,p1cursor)){
+							movePiece(selectedPiece,p1cursor,blackTeam);
+						}
+						//currentSpaceSelection = NULL;
+						//lastSpaceSelection = NULL;
 						selectedPiece = NULL;
 						currentState = p2pieceSelect;
 						break;
 					case KEY_A:
-						currentSpaceSelection = NULL;
-						lastSpaceSelection = NULL;
+						//currentSpaceSelection = NULL;
+						//lastSpaceSelection = NULL;
 						clearPotentialMoves(selectedPiece);
 						selectedPiece = NULL;
 						currentState = p1pieceSelect;
 						break;
 					default:
 						break;
+				}
+				if(p1cursor->x > 7){
+					p1cursor->x = 7;
+				}
 
+				if(p1cursor->x < 0){
+					p1cursor->x = 0;
 				}
-				if(currentSpaceSelection == NULL && currentState == p1moveSelect){
-					currentSpaceSelection = selectedPiece->potentialPos;
+
+				if(p1cursor->y > 7){
+					p1cursor->y = 7;
 				}
-				if(currentState == p1moveSelect){
-					p1cursor->x = currentSpaceSelection->x;
-					p1cursor->y = currentSpaceSelection->y;
+
+				if(p1cursor->y < 0){
+					p1cursor->y = 0;
 				}
 				break;
 
 
 			case p2moveSelect:
-				if(currentSpaceSelection == NULL){
-					currentSpaceSelection = selectedPiece->potentialPos;
-				}
-				p2cursor->x = currentSpaceSelection->x;
-				p2cursor->y = currentSpaceSelection->y;
-
 				switch(kDown){
-
-					case KEY_LSTICK_DOWN:   //right
-						lastSpaceSelection = currentSpaceSelection;
-						currentSpaceSelection = currentSpaceSelection->next;
+					case KEY_LSTICK_DOWN: //Right
+						p2cursor->x += 1;
 						break;
-					case KEY_LSTICK_UP: //left
-						if(lastSpaceSelection != NULL){
-							currentSpaceSelection = lastSpaceSelection;
-						}
+					case KEY_LSTICK_UP:  //Left
+						p2cursor->x -= 1;
+						break;
+					case KEY_LSTICK_RIGHT:    //Up
+						p2cursor->y -= 1;
+						break;
+					case KEY_LSTICK_LEFT:  //Down
+						p2cursor->y += 1;
 						break;
 					case KEY_DDOWN:
-						movePiece(selectedPiece,currentSpaceSelection,whiteTeam);
-						currentSpaceSelection = NULL;
-						lastSpaceSelection = NULL;
-						selectedPiece = NULL;
-						currentState = p1pieceSelect;
+						if(playerOnValidSpace(selectedPiece->potentialPos,p2cursor)){
+							movePiece(selectedPiece,p2cursor,whiteTeam);
+							selectedPiece = NULL;
+							currentState = p1pieceSelect;
+						}
+						//currentSpaceSelection = NULL;
+						//lastSpaceSelection = NULL;
 						break;
 					case KEY_DLEFT:
-						currentSpaceSelection = NULL;
-						lastSpaceSelection = NULL;
+						//currentSpaceSelection = NULL;
+						//lastSpaceSelection = NULL;
 						clearPotentialMoves(selectedPiece);
 						selectedPiece = NULL;
 						currentState = p2pieceSelect;
+
 						break;
 					default:
 						break;
 
 				}
-				if(currentSpaceSelection == NULL && currentState == p2moveSelect){
-					currentSpaceSelection = selectedPiece->potentialPos;
+				if(p2cursor->x > 7){
+					p2cursor->x = 7;
 				}
-				if(currentState == p2moveSelect){
-					p2cursor->x = currentSpaceSelection->x;
-					p2cursor->y = currentSpaceSelection->y;
+
+				if(p2cursor->x < 0){
+					p2cursor->x = 0;
+				}
+
+				if(p2cursor->y > 7){
+					p2cursor->y = 7;
+				}
+
+				if(p2cursor->y < 0){
+					p2cursor->y = 0;
 				}
 				break;
 
