@@ -196,21 +196,33 @@ void moveFinderHelper(struct piece* movingPiece, int potX, int potY, int xIncrem
 
 void findMoves(struct piece* movingPiece){
 	int pawnPotY;
+	int startY;
 	//clearPotentialMoves(movingPiece);
 	switch(movingPiece->type){
 		case pawn:
 			if(movingPiece->isWhite){
-				pawnPotY = movingPiece->y-1;
+				pawnPotY = -1;
+				startY = whiteStartFrontRow;
 			} else {
-				pawnPotY = movingPiece->y+1;
+				pawnPotY = 1;
+				startY = blackStartFrontRow;
 			}
-			if(movingPiece->x >= 0 && movingPiece->x < 8 && pawnPotY >= 0 && pawnPotY < 8){
-				if(board[pawnPotY][movingPiece->x] == 0){
-					validateMove(movingPiece,movingPiece->x,pawnPotY);
+			if(movingPiece->x >= 0 && movingPiece->x < 8 && movingPiece->y+(1*pawnPotY) >= 0 && movingPiece->y+(1*pawnPotY) < 8){
+				if(board[movingPiece->y+(1*pawnPotY)][movingPiece->x] == 0){
+					validateMove(movingPiece,movingPiece->x,movingPiece->y+(1*pawnPotY));
+					if(movingPiece->y == startY && movingPiece->x >= 0 && movingPiece->x < 8 && movingPiece->y+(1*pawnPotY) >= 0 && movingPiece->y+(1*pawnPotY) < 8){
+						if(board[movingPiece->y+(2*pawnPotY)][movingPiece->x] == 0){
+							validateMove(movingPiece,movingPiece->x,movingPiece->y+(2*pawnPotY));
+						}
+					}
 				}
 			}
-			validateMove(movingPiece,movingPiece->x + 1,pawnPotY);
-			validateMove(movingPiece,movingPiece->x - 1,pawnPotY);
+			if((movingPiece->isWhite && board[movingPiece->y+(1*pawnPotY)][movingPiece->x+1] > 7) || (!movingPiece->isWhite && board[movingPiece->y+(1*pawnPotY)][movingPiece->x+1] != 0 && board[movingPiece->y+(1*pawnPotY)][movingPiece->x+1] <= 7)){
+				validateMove(movingPiece,movingPiece->x + 1,movingPiece->y+(1*pawnPotY));
+			}
+			if((movingPiece->isWhite && board[movingPiece->y+(1*pawnPotY)][movingPiece->x-1] > 7) || (!movingPiece->isWhite && board[movingPiece->y+(1*pawnPotY)][movingPiece->x-1] != 0 && board[movingPiece->y+(1*pawnPotY)][movingPiece->x-1] <= 7)){
+				validateMove(movingPiece,movingPiece->x - 1,movingPiece->y+(1*pawnPotY));
+			}
 			//if(movingPiece->x >= 0 && movingPiece->x < 8 && pawnPotY >= 0 && pawnPotY < 8){
 			//	if(board[pawnPotY][movingPiece->x] == 0){
 			//		validateMove(movingPiece,movingPiece->x,pawnPotY);
