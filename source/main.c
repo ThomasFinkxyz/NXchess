@@ -18,7 +18,7 @@ const int blackPieceTextureOffset = 6;
 //I need this to skip over the white textures in the array of piece textures.
 const int cursorStartX = 3;
 
-//cant use boardlw because C is dumb
+//should use preprocessor to get rid of magic numbers but I'm lazy. Can't use const boardlw for some reason.
 int board[8][8] =  {{0,0,0,0,0,0,0,0},
 				   	{0,0,0,0,0,0,0,0},
 				   	{0,0,0,0,0,0,0,0},
@@ -664,3 +664,4 @@ int main(int argc, char* argv[]){
 	free(p2cursor);
     return 0;
 }
+
